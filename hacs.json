@@ -1,3 +1,5 @@
 {
-    "name": "GOVEE Bluetooth Lights"
-  }
+  "name": "GOVEE Bluetooth Lights",
+  "render_readme": true,
+  "country": "DE"
+}
