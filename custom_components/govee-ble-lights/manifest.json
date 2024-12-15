@@ -4,7 +4,7 @@
     "bluetooth": [
         { "local_name": "ihoment_*", "connectable": false }
     ],
-    "requirements": ["bleak-retry-connector", "git+https://github.com/Freemanium/govee_btled"],
+    "requirements": ["bleak-retry-connector"],
     "dependencies": ["bluetooth"],
     "codeowners": ["@timniklas"],
     "config_flow": true,
