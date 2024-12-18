@@ -9,7 +9,7 @@ from homeassistant.components.bluetooth import (
     async_discovered_service_info,
 )
 from homeassistant.config_entries import ConfigFlow
-from homeassistant.const import CONF_ADDRESS
+from homeassistant.const import CONF_ADDRESS, CONF_NAME
 from homeassistant.data_entry_flow import FlowResult
 
 from .const import DOMAIN
@@ -66,6 +66,8 @@ class GoveeConfigFlow(ConfigFlow, domain=DOMAIN):
         for discovery_info in async_discovered_service_info(self.hass, False):
             address = discovery_info.address
             if address in current_addresses or address in self._discovered_devices:
+                continue
+            if not discovery_info.name.startswith('Govee_'):
                 continue
             self._discovered_devices[address] = (discovery_info.name)
 

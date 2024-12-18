@@ -2,14 +2,14 @@
     "domain": "govee-ble-lights",
     "name": "GOVEE Bluetooth Lights",
     "bluetooth": [
-        { "local_name": "ihoment_*", "connectable": false }
+        { "local_name": "Govee_*", "connectable": false }
     ],
-    "requirements": ["bleak-retry-connector"],
-    "dependencies": ["bluetooth"],
     "codeowners": ["@timniklas"],
     "config_flow": true,
+    "dependencies": ["bluetooth"],
     "documentation": "https://github.com/timniklas/hass-govee-bluetooth-lights",
     "iot_class": "local_polling",
     "issue_tracker": "https://github.com/timniklas/hass-govee-bluetooth-lights/issues",
+    "requirements": ["bleak-retry-connector"],
     "version": "0.0.0"
 }
