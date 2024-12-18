@@ -8,7 +8,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.components import bluetooth
 from homeassistant.components.light import (ColorMode, LightEntity, ATTR_BRIGHTNESS, ATTR_RGB_COLOR)
 
-from .bluetooth_led import BluetoothLED
+from .api import GoveeAPI
 
 from .const import DOMAIN
 
@@ -24,7 +24,7 @@ async def async_setup_entry(
     ].address
 
 
-    ble_device = await bluetooth.async_ble_device_from_address(hass, address, connectable=False)
+    ble_device = bluetooth.async_ble_device_from_address(hass, address, connectable=False)
     async_add_entities([
         GoveeBluetoothLight(address, ble_device)
     ], True)
@@ -32,9 +32,8 @@ async def async_setup_entry(
 
 class GoveeBluetoothLight(LightEntity):
 
-    _attr_has_entity_name = True
     _attr_translation_key = "goveeblelight"
-    _attr_supported_color_modes = {ColorMode.ONOFF, ColorMode.BRIGHTNESS, ColorMode.RGB}
+    _attr_supported_color_modes = {ColorMode.RGB}
     _attr_color_mode = ColorMode.RGB
 
     def __init__(self, address: str, ble_device):
@@ -46,7 +45,7 @@ class GoveeBluetoothLight(LightEntity):
             identifiers={(DOMAIN, address)}
         )
         self._address = address
-        self._api = BluetoothLED(ble_device)
+        self._api = GoveeAPI(ble_device)
         self._brightness = None
         self._state = None
         self._rgb = None
@@ -69,6 +68,7 @@ class GoveeBluetoothLight(LightEntity):
     async def async_turn_on(self, **kwargs):
         """Turn device on."""
         await self._api.connect(self._address)
+        await self._api.set_state(True)
 
         if ATTR_BRIGHTNESS in kwargs:
             brightness = kwargs.get(ATTR_BRIGHTNESS, 255)
