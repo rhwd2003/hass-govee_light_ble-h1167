@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from enum import IntEnum
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -10,6 +12,12 @@ from homeassistant.components.light import (ColorMode, LightEntity, ATTR_BRIGHTN
 
 from .api import GoveeAPI
 from .const import DOMAIN
+
+import logging
+_LOGGER = logging.getLogger(__name__)
+
+class BlePacket(IntEnum):
+    STATUS = 34819
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -24,8 +32,14 @@ async def async_setup_entry(
 
 
     ble_device = bluetooth.async_ble_device_from_address(hass, address, connectable=False)
+    service_info = bluetooth.async_last_service_info(hass, address, connectable=False)
+    name = service_info.name
+    state = None
+    if BlePacket.STATUS in service_info.manufacturer_data:
+        state = service_info.manufacturer_data[BlePacket.STATUS][4] == 1
+
     async_add_entities([
-        GoveeBluetoothLight(address, ble_device)
+        GoveeBluetoothLight(address, name, state, ble_device)
     ], True)
 
 
@@ -35,10 +49,11 @@ class GoveeBluetoothLight(LightEntity):
     _attr_supported_color_modes = {ColorMode.RGB}
     _attr_color_mode = ColorMode.RGB
 
-    def __init__(self, address: str, ble_device):
+    def __init__(self, address: str, name: str, state: bool, ble_device):
         """Initialize."""
-        self.unique_id = f"{address}"
-        self.device_info = DeviceInfo(
+        self._attr_name = name
+        self._attr_unique_id = f"{address}"
+        self._attr_device_info = DeviceInfo(
             #only generate device once!
             manufacturer="GOVEE",
             identifiers={(DOMAIN, address)}
@@ -46,7 +61,7 @@ class GoveeBluetoothLight(LightEntity):
         self._address = address
         self._api = GoveeAPI(ble_device)
         self._brightness = None
-        self._state = None
+        self._state = state
         self._rgb = None
 
     @property
