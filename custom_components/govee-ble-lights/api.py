@@ -1,6 +1,6 @@
 from enum import IntEnum
 from colour import Color
-
+import asyncio
 import bleak_retry_connector
 from bleak import BleakClient
 
@@ -51,6 +51,7 @@ class GoveeAPI:
         
         frame += bytes([checksum & 0xFF])
         await self._conn.write_gatt_char(UUID_CONTROL_CHARACTERISTIC, frame, False)
+        await asyncio.sleep(.01)
     
     async def set_state(self, state: bool):
         await self._send(LedCommand.POWER, [0x1 if state else 0x0])
