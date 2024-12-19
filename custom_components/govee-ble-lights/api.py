@@ -63,3 +63,5 @@ class GoveeAPI:
         
     async def set_color(self, red: int, green: int, blue: int):
         await self._send(LedCommand.COLOR, [0x15, 0x01, red, green, blue, 0, 0, 0, 0, 0, 0xff, 0xff])
+        #legacy devices
+        await self._send(LedCommand.COLOR, [0x02, red, green, blue])
