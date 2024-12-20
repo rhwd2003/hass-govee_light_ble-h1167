@@ -1,0 +1,19 @@
+{
+    "title": "Govee LED (bluetooth)",
+    "config": {
+        "step": {
+            "user": {
+                "title": "Govee BLE Einrichtung",
+                "description": "Wähle eins der gefundenen Geräte aus.",
+                "data": {
+                    "address": "Gerät"
+                }
+            },
+            "bluetooth_confirm": {
+                "data": {
+                    "segmented": "Handelt es sich um einen LED-Streifen mit einzeln steuerbaren Segmenten?"
+                }
+            }
+        }
+    }
+}
