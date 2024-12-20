@@ -9,6 +9,8 @@
 
 ## Overview
 
+> This integration is still in an experimental stage, please feel free to give feedback :)
+
 The Govee Bluetooth Lights Home Assistant Custom Integration allows you to integrate your Govee bluetooth light (without the cloud!) with your Home Assistant setup.
 
 ## Installation
@@ -57,5 +59,5 @@ If you want to add a new feature, add a pull request first so we can discuss the
 
 ## Disclaimer
 
-This custom integration is not officially endorsed or supported by Blitzer.de.
+This custom integration is not officially endorsed or supported by Govee.
 Use it at your own risk and ensure that you comply with all relevant terms of service and privacy policies.
