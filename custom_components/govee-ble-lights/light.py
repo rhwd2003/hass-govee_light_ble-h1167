@@ -1,23 +1,14 @@
 from __future__ import annotations
 
-from enum import IntEnum
-
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.components import bluetooth
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.device_registry import DeviceInfo
-
-from homeassistant.components import bluetooth
 from homeassistant.components.light import (ColorMode, LightEntity, ATTR_BRIGHTNESS, ATTR_RGB_COLOR)
 
 from .api import GoveeAPI
 from .const import DOMAIN
-
-import logging
-_LOGGER = logging.getLogger(__name__)
-
-class BlePacket(IntEnum):
-    STATUS = 34819
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -26,30 +17,23 @@ async def async_setup_entry(
 ):
     """Set up a Buttons."""
     # This gets the data update coordinator from hass.data as specified in your __init__.py
-    address: str = hass.data[DOMAIN][
-        config_entry.entry_id
-    ].address
+    device_address = hass.data[DOMAIN][config_entry.entry_id].device_address
+    device_name = hass.data[DOMAIN][config_entry.entry_id].device_name
+    device_segmented = hass.data[DOMAIN][config_entry.entry_id].device_segmented
+    device_state = hass.data[DOMAIN][config_entry.entry_id].device_state
 
-
-    ble_device = bluetooth.async_ble_device_from_address(hass, address, connectable=False)
-    service_info = bluetooth.async_last_service_info(hass, address, connectable=False)
-    name = service_info.name
-    state = None
-    if BlePacket.STATUS in service_info.manufacturer_data:
-        state = service_info.manufacturer_data[BlePacket.STATUS][4] == 1
-
+    ble_device = bluetooth.async_ble_device_from_address(hass, device_address, True)
     async_add_entities([
-        GoveeBluetoothLight(address, name, state, ble_device)
+        GoveeBluetoothLight(device_address, device_name, device_state, device_segmented, ble_device)
     ], True)
 
 
 class GoveeBluetoothLight(LightEntity):
 
-    _attr_translation_key = "goveeblelight"
     _attr_supported_color_modes = {ColorMode.RGB}
     _attr_color_mode = ColorMode.RGB
 
-    def __init__(self, address: str, name: str, state: bool, ble_device):
+    def __init__(self, address: str, name: str, state: bool, segmented: bool, ble_device):
         """Initialize."""
         self._attr_name = name
         self._attr_unique_id = f"{address}"
@@ -58,6 +42,7 @@ class GoveeBluetoothLight(LightEntity):
             manufacturer="GOVEE",
             identifiers={(DOMAIN, address)}
         )
+        self._segmented = segmented
         self._address = address
         self._api = GoveeAPI(ble_device)
         self._brightness = None
@@ -94,7 +79,7 @@ class GoveeBluetoothLight(LightEntity):
     async def _setColor(self, red: int, green: int, blue: int):
         if self._rgb is (red, green, blue):
             return None
-        await self._api.set_color(red, green, blue)
+        await self._api.set_color(red, green, blue, self._segmented)
         self._rgb = (red, green, blue)
 
     async def async_turn_on(self, **kwargs):

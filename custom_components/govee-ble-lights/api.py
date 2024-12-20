@@ -62,13 +62,15 @@ class GoveeAPI:
         value = round(value)
         await self._send(LedCommand.BRIGHTNESS, [value])
         
-    async def set_color(self, red: int, green: int, blue: int):
+    async def set_color(self, red: int, green: int, blue: int, segmented: bool = False):
         if not 0 <= red <= 255:
             raise ValueError(f'Color out of range: {red}')
         if not 0 <= green <= 255:
             raise ValueError(f'Color out of range: {green}')
         if not 0 <= blue <= 255:
             raise ValueError(f'Color out of range: {blue}')
-        await self._send(LedCommand.COLOR, [0x15, 0x01, red, green, blue, 0, 0, 0, 0, 0, 0xff, 0xff])
-        #legacy devices
-        await self._send(LedCommand.COLOR, [0x02, red, green, blue])
+        
+        if segmented:
+            await self._send(LedCommand.COLOR, [0x15, 0x01, red, green, blue, 0, 0, 0, 0, 0, 0xff, 0xff])
+        else:
+            await self._send(LedCommand.COLOR, [0x02, red, green, blue])
