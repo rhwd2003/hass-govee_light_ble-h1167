@@ -51,12 +51,6 @@ class GoveeAPI:
         self._ble_device = ble_device
         self._address = address
         self._frame_buffer = []
-    
-    async def _prepareWritePacket(self, packet: LedPacket):
-        await self._preparePacket(WRITE_CHARACTERISTIC_UUID, packet)
-    
-    async def _prepareReadPacket(self, packet: LedPacket):
-        await self._preparePacket(READ_CHARACTERISTIC_UUID, packet)
 
     async def _preparePacket(self, packet: LedPacket):
         uuid = getUUIDByHead(packet.head)
