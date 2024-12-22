@@ -25,7 +25,7 @@ class RuntimeData:
     device_address: str
     device_name: str
     device_segmented: str
-    device_state: bool
+    device_state: bool | None
 
 async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     """Set up Integration from a config entry."""
