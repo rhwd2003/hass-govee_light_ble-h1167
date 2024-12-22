@@ -3,7 +3,7 @@
 [![GitHub Release](https://img.shields.io/github/v/release/timniklas/hass-govee-ble-lights?sort=semver&style=for-the-badge&color=green)](https://github.com/timniklas/hass-govee-ble-lights/releases/)
 [![GitHub Release Date](https://img.shields.io/github/release-date/timniklas/hass-govee-ble-lights?style=for-the-badge&color=green)](https://github.com/timniklas/hass-govee-ble-lights/releases/)
 ![GitHub Downloads (all assets, latest release)](https://img.shields.io/github/downloads/timniklas/hass-govee-ble-lights/latest/total?style=for-the-badge&label=Downloads%20latest%20Release)
-![HA Analytics](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fanalytics.home-assistant.io%2Fcustom_integrations.json&query=%24.govee-ble-lights.total&style=for-the-badge&label=Active%20Installations&color=red)
+![HA Analytics](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fanalytics.home-assistant.io%2Fcustom_integrations.json&query=%24.govee_lights_ble.total&style=for-the-badge&label=Active%20Installations&color=red)
 ![GitHub commit activity](https://img.shields.io/github/commit-activity/m/timniklas/hass-govee-ble-lights?style=for-the-badge)
 [![hacs](https://img.shields.io/badge/HACS-Integration-blue.svg?style=for-the-badge)](https://github.com/hacs/integration)
 
