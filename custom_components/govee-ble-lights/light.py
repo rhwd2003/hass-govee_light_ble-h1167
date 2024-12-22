@@ -46,6 +46,8 @@ class GoveeBluetoothLight(LightEntity):
         self._attr_device_info = DeviceInfo(
             #only generate device once!
             manufacturer="GOVEE",
+            model=device_name,
+            serial_number=device_address,
             identifiers={(DOMAIN, device_address)}
         )
         self._segmented = device_segmented
