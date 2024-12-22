@@ -5,7 +5,7 @@ import bleak_retry_connector
 from bleak import BleakClient
 from dataclasses import dataclass
 
-from .const import WRITE_CHARACTERISTIC_UUID, READ_CHARACTERISTIC_UUID
+from .const import WRITE_CHARACTERISTIC_UUID
 
 class LedPacketHead(IntEnum):
     COMMAND = 0x33
@@ -26,24 +26,12 @@ class LedPacket:
     cmd: LedPacketCmd
     payload: bytes | list = b''
 
-@dataclass
-class LedFrame:
-    uuid: str
-    data: bytes
-
 def generateChecksum(frame: bytes):
     # The checksum is calculated by XORing all data bytes
     checksum = 0
     for b in frame:
         checksum ^= b
     return bytes([checksum & 0xFF])
-
-def getUUIDByHead(head: LedPacketHead):
-    match head:
-        case LedPacketHead.REQUEST:
-            return READ_CHARACTERISTIC_UUID
-        case _:
-            return WRITE_CHARACTERISTIC_UUID
 
 class GoveeAPI:
     def __init__(self, ble_device, address):
@@ -53,16 +41,13 @@ class GoveeAPI:
         self._frame_buffer = []
 
     async def _preparePacket(self, packet: LedPacket):
-        uuid = getUUIDByHead(packet.head)
         cmd = packet.cmd & 0xFF
         payload = bytes(packet.payload)
         frame = bytes([packet.head, cmd]) + bytes(payload)
         # pad frame data to 19 bytes (plus checksum)
         frame += bytes([0] * (19 - len(frame)))
         frame += generateChecksum(frame)
-        self._frame_buffer.append(
-            LedFrame(uuid, frame)
-        )
+        self._frame_buffer.append(frame)
     
     async def _getClient(self):
         return await bleak_retry_connector.establish_connection(BleakClient, self._ble_device, self._address)
@@ -72,7 +57,7 @@ class GoveeAPI:
             return None #nothing to do
         async with await self._getClient() as client:
             for frame in self._frame_buffer:
-                await client.write_gatt_char(frame.uuid, frame.data, False)
+                await client.write_gatt_char(WRITE_CHARACTERISTIC_UUID, frame, False)
             self._frame_buffer = []
     
     async def setStateBuffered(self, state: bool):
