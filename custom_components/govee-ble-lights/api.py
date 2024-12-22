@@ -1,5 +1,4 @@
 from enum import IntEnum
-from colour import Color
 import asyncio
 import bleak_retry_connector
 from bleak import BleakClient
