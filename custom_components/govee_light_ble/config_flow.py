@@ -48,7 +48,7 @@ class GoveeConfigFlow(ConfigFlow, domain=DOMAIN):
             address = discovery_info.address
             if address in current_addresses or address in self._discovered_devices:
                 continue
-            if not discovery_info.name.startswith('Govee_','ihoment_'):
+            if not discovery_info.name.startswith(('Govee_', 'ihoment_')):
                 continue
             self._discovered_devices[address] = discovery_info
 
