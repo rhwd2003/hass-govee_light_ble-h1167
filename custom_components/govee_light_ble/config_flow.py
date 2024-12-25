@@ -13,7 +13,7 @@ from homeassistant.const import CONF_ADDRESS, CONF_NAME, CONF_TYPE
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.selector import selector
 
-from .const import DOMAIN
+from .const import DOMAIN, DISCOVERY_NAMES
 
 
 class GoveeConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -48,7 +48,7 @@ class GoveeConfigFlow(ConfigFlow, domain=DOMAIN):
             address = discovery_info.address
             if address in current_addresses or address in self._discovered_devices:
                 continue
-            if not discovery_info.name.startswith('Govee_'):
+            if not discovery_info.name.startswith(DISCOVERY_NAMES):
                 continue
             self._discovered_devices[address] = discovery_info
 
