@@ -66,10 +66,16 @@ class GoveeAPI:
         )
         await self._preparePacket(packet)
     
-    async def setBrightnessBuffered(self, value: int):
+    async def setBrightnessBuffered(self, value: int, segmented: bool = False):
         if not 0 <= value <= 255:
             raise ValueError(f'Brightness out of range: {value}')
-        value = round(value)
+
+        if segmented:
+            # brightnessPercent
+            value = int(value/255.0*100)
+        else:
+            value = round(value)
+            
         packet = LedPacket(
             head=LedPacketHead.COMMAND,
             cmd=LedPacketCmd.BRIGHTNESS,
