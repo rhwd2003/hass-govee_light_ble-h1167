@@ -3,7 +3,8 @@
     "name": "GOVEE Bluetooth Lights",
     "bluetooth": [
         { "local_name": "Govee_*", "connectable": false },
-        { "local_name": "ihoment_*", "connectable": false }
+        { "local_name": "ihoment_*", "connectable": false },
+        { "local_name": "GBK_*", "connectable": false }
     ],
     "codeowners": ["@timniklas"],
     "config_flow": true,

@@ -1,0 +1,18 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "title": "Configuración Govee BLE",
+                "description": "Selecciona uno de los dispositivos encontrados",
+                "data": {
+                    "address": "Dispositivo"
+                }
+            },
+            "bluetooth_confirm": {
+                "data": {
+                    "segmented": "¿Es una tira LED con segmentos que se controlan individualmente?"
+                }
+            }
+        }
+    }
+}
