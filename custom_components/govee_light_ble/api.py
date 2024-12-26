@@ -81,7 +81,7 @@ class GoveeAPI:
             await self._preparePacket(packet)
     
     async def setStateBuffered(self, state: bool):
-        packet = LedPacket(LedPacketHead.COMMAND, LedPacketCmd.POWER, [0x1 if state else 0x0)
+        packet = LedPacket(LedPacketHead.COMMAND, LedPacketCmd.POWER, [0x1 if state else 0x0])
         await self._preparePacket(packet)
     
     async def setBrightnessBuffered(self, value: int):
