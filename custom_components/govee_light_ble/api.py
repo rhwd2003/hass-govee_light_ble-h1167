@@ -10,8 +10,7 @@ from .api_utils import (
     LedPacketCmd,
     LedColorType,
     LedPacket,
-    generateChecksum,
-    generateFrame
+    GoveeUtils
 )
 
 class GoveeAPI:
@@ -35,7 +34,7 @@ class GoveeAPI:
             return None #nothing to do
         async with await self._getClient() as client:
             for packet in self._packet_buffer:
-                frame = generateFrame(packet)
+                frame = GoveeUtils.generateFrame(packet)
                 await client.write_gatt_char(WRITE_CHARACTERISTIC_UUID, frame, False)
             self._packet_buffer = []
 
