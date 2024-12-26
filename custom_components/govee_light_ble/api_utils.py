@@ -36,4 +36,4 @@ class GoveeUtils:
         frame = bytes([packet.head, cmd]) + bytes(packet.payload)
         # pad frame data to 19 bytes (plus checksum)
         frame += bytes([0] * (19 - len(frame)))
-        frame += generateChecksum(frame)
+        frame += GoveeUtils.generateChecksum(frame)
