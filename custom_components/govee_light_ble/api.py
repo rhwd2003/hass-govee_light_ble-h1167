@@ -58,7 +58,7 @@ class GoveeAPI:
             raise ValueError(f'Brightness out of range: {value}')
         value = round(value)
         if self._segmented:
-            value = int(value/255.0*100) #percentage
+            value = int(value / 255 * 100) #percentage
         await self._preparePacket(LedPacketCmd.BRIGHTNESS, [value])
         
     async def setColorBuffered(self, red: int, green: int, blue: int):
