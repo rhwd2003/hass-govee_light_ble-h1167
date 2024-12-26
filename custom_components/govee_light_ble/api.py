@@ -40,6 +40,8 @@ class GoveeAPI:
             return None
         async with await self._getClient() as client:
             for packet in self._packet_buffer:
+                #convert to bytes
+                frame = await GoveeUtils.generateFrame(packet)
                 #transmit to UUID
                 await client.write_gatt_char(WRITE_CHARACTERISTIC_UUID, frame, False)
             #clear buffer
