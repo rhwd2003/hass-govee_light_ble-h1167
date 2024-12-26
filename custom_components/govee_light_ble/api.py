@@ -46,11 +46,7 @@ class GoveeAPI:
 
     async def requestColorBuffered(self):
         if self._segmented:
-            await self._preparePacket(LedPacketCmd.SEGMENT, b'\x01', request=True)
-            await self._preparePacket(LedPacketCmd.SEGMENT, b'\x02', request=True)
-            await self._preparePacket(LedPacketCmd.SEGMENT, b'\x03', request=True)
-            await self._preparePacket(LedPacketCmd.SEGMENT, b'\x04', request=True)
-            await self._preparePacket(LedPacketCmd.SEGMENT, b'\x05', request=True)
+            await self._preparePacket(LedPacketCmd.SEGMENT, b'\x01', request=True) #0x01 means first segment
         else:
             await self._preparePacket(LedPacketCmd.COLOR, request=True)
     
