@@ -14,6 +14,7 @@ class LedPacketCmd(IntEnum):
     POWER      = 0x01
     BRIGHTNESS = 0x04
     COLOR      = 0x05
+    SEGMENT    = 0xa5
 
 class LedColorType(IntEnum):
     SEGMENTS    = 0x15
@@ -47,10 +48,18 @@ class GoveeAPI:
         frame += bytes([0] * (19 - len(frame)))
         frame += generateChecksum(frame)
         self._frame_buffer.append(frame)
+
+    async def _prepareRequestPacket(self, cmd: LedPacketCmd, payload: bytes = b''):
+        packet = LedPacket(
+            head=LedPacketHead.REQUEST,
+            cmd=cmd,
+            payload=payload
+        )
+        await self._preparePacket(packet)
     
     async def _getClient(self):
         return await bleak_retry_connector.establish_connection(BleakClient, self._ble_device, self._address)
-
+    
     async def sendPacketBuffer(self):
         if len(self._frame_buffer) == 0:
             return None #nothing to do
@@ -58,6 +67,22 @@ class GoveeAPI:
             for frame in self._frame_buffer:
                 await client.write_gatt_char(WRITE_CHARACTERISTIC_UUID, frame, False)
             self._frame_buffer = []
+
+    async def requestStateBuffered(self):
+        await self._prepareRequestPacket(LedPacketCmd.POWER)
+
+    async def requestBrightnessBuffered(self):
+        await self._prepareRequestPacket(LedPacketCmd.BRIGHTNESS)
+
+    async def requestColorBuffered(self):
+        if self._segmented:
+            await self._prepareRequestPacket(LedPacketCmd.SEGMENT, b'\x01')
+            await self._prepareRequestPacket(LedPacketCmd.SEGMENT, b'\x02')
+            await self._prepareRequestPacket(LedPacketCmd.SEGMENT, b'\x03')
+            await self._prepareRequestPacket(LedPacketCmd.SEGMENT, b'\x04')
+            await self._prepareRequestPacket(LedPacketCmd.SEGMENT, b'\x05')
+        else:
+            await self._prepareRequestPacket(LedPacketCmd.COLOR)
     
     async def setStateBuffered(self, state: bool):
         packet = LedPacket(
