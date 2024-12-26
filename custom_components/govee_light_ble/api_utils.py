@@ -1,4 +1,4 @@
-from enum import IntEnu
+from enum import IntEnum
 from dataclasses import dataclass
 
 class LedPacketHead(IntEnum):
@@ -17,23 +17,32 @@ class LedColorType(IntEnum):
 
 @dataclass
 class LedPacket:
+    #request data or perform a change
     head: LedPacketHead
+    #data to request or command to perform
     cmd: LedPacketCmd
+    #actual data to transmit
     payload: bytes | list = b''
 
 class GoveeUtils:
     @staticmethod
-    def generateChecksum(frame: bytes):
-        # The checksum is calculated by XORing all data bytes
+    async def generateChecksum(frame: bytes):
+        """ returns checksum by XORing all data bytes """
         checksum = 0
         for b in frame:
             checksum ^= b
+        #pad response to 8 bits
         return bytes([checksum & 0xFF])
 
     @staticmethod
-    def generateFrame(packet: LedPacket):
+    async def generateFrame(packet: LedPacket):
+        """ returns transmittable frame bytes """
+        #pad cmd to 8 bits
         cmd = packet.cmd & 0xFF
+        #combine segments
         frame = bytes([packet.head, cmd]) + bytes(packet.payload)
-        # pad frame data to 19 bytes (plus checksum)
+        #pad frame data to 19 bytes (plus checksum)
         frame += bytes([0] * (19 - len(frame)))
-        frame += GoveeUtils.generateChecksum(frame)
+        #add checksum to end
+        frame += await GoveeUtils.generateChecksum(frame)
+        return frame

@@ -14,60 +14,70 @@ from .api_utils import (
 )
 
 class GoveeAPI:
-    def __init__(self, ble_device: BleakClient, address: str, segmented: bool = False):
+    def __init__(self, ble_device: BLEDevice, address: str, segmented: bool = False):
         self._conn = None
         self._ble_device = ble_device
         self._address = address
         self._segmented = segmented
         self._packet_buffer = []
+        self._client = None
 
     async def _getClient(self):
+        """ connects to bluetooth device """
         return await bleak_retry_connector.establish_connection(BleakClient, self._ble_device, self._address)
-    
+
     async def _preparePacket(self, cmd: LedPacketCmd, payload: bytes | list = b'', request: bool = False):
-        head = request if LedPacketHead.REQUEST else LedPacketHead.COMMAND
+        """ add data to transmission buffer """
+        #request data or perform a change
+        head = LedPacketHead.REQUEST if request else LedPacketHead.COMMAND
         packet = LedPacket(head, cmd, payload)
         self._packet_buffer.append(packet)
-        
+
     async def sendPacketBuffer(self):
+        """ transmits all buffered data """
         if len(self._packet_buffer) == 0:
-            return None #nothing to do
+            #nothing to do
+            return None
         async with await self._getClient() as client:
             for packet in self._packet_buffer:
-                frame = GoveeUtils.generateFrame(packet)
+                #transmit to UUID
                 await client.write_gatt_char(WRITE_CHARACTERISTIC_UUID, frame, False)
+            #clear buffer
             self._packet_buffer = []
 
     async def requestStateBuffered(self):
+        """ adds a request for the current power state to the transmit buffer """
         await self._preparePacket(LedPacketCmd.POWER, request=True)
 
     async def requestBrightnessBuffered(self):
+        """ adds a request for the current brightness state to the transmit buffer """
         await self._preparePacket(LedPacketCmd.BRIGHTNESS, request=True)
 
     async def requestColorBuffered(self):
+        """ adds a request for the current color state to the transmit buffer """
         if self._segmented:
-            await self._preparePacket(LedPacketCmd.SEGMENT, b'\x01', request=True) #0x01 means first segment
-        else:
-            await self._preparePacket(LedPacketCmd.COLOR, request=True)
+            #0x01 means first segment
+            return await self._preparePacket(LedPacketCmd.SEGMENT, b'\x01', request=True)
+        #empty response on segmented devices
+        await self._preparePacket(LedPacketCmd.COLOR, request=True)
     
     async def setStateBuffered(self, state: bool):
+        """ adds the state to the transmit buffer """
+        #0x1 = ON, Ox0 = OFF
         await self._preparePacket(LedPacketCmd.POWER, [0x1 if state else 0x0])
     
-    async def setBrightnessBuffered(self, value: int):
-        if not 0 <= value <= 255:
-            raise ValueError(f'Brightness out of range: {value}')
-        value = round(value)
+    async def setBrightnessBuffered(self, brightness: int):
+        """ adds the brightness to the transmit buffer """
+        #legacy devices 0-255
+        payload = round(brightness)
         if self._segmented:
-            value = int(value / 255 * 100) #percentage
-        await self._preparePacket(LedPacketCmd.BRIGHTNESS, [value])
+            #segmented devices 0-100
+            payload = int(brightness / 255 * 100)
+        await self._preparePacket(LedPacketCmd.BRIGHTNESS, [payload])
         
     async def setColorBuffered(self, red: int, green: int, blue: int):
-        if not 0 <= red <= 255:
-            raise ValueError(f'Color out of range: {red}')
-        if not 0 <= green <= 255:
-            raise ValueError(f'Color out of range: {green}')
-        if not 0 <= blue <= 255:
-            raise ValueError(f'Color out of range: {blue}')
+        """ adds the color to the transmit buffer """
+        #legacy devices
         payload = [LedColorType.SINGLE, red, green, blue]
         if self._segmented:
             payload = [LedColorType.SEGMENTS, 0x01, red, green, blue, 0, 0, 0, 0, 0, 0xff, 0xff]
