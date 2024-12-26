@@ -26,12 +26,13 @@ class GoveeAPI:
         """ connects to bluetooth device """
         return await bleak_retry_connector.establish_connection(BleakClient, self._ble_device, self._address)
 
-    async def _preparePacket(self, cmd: LedPacketCmd, payload: bytes | list = b'', request: bool = False):
+    async def _preparePacket(self, cmd: LedPacketCmd, payload: bytes | list = b'', request: bool = False, repeat: int = 3):
         """ add data to transmission buffer """
         #request data or perform a change
         head = LedPacketHead.REQUEST if request else LedPacketHead.COMMAND
         packet = LedPacket(head, cmd, payload)
-        self._packet_buffer.append(packet)
+        for index in range(repeat):
+            self._packet_buffer.append(packet)
 
     async def sendPacketBuffer(self):
         """ transmits all buffered data """
