@@ -50,8 +50,7 @@ class GoveeBluetoothLight(LightEntity):
             serial_number=device_address,
             identifiers={(DOMAIN, device_address)}
         )
-        self._segmented = device_segmented
-        self._api = GoveeAPI(ble_device, device_address)
+        self._api = GoveeAPI(ble_device, device_address, device_segmented)
         self._brightness = None
         self._state = device_state
         self._rgb = None
@@ -82,13 +81,13 @@ class GoveeBluetoothLight(LightEntity):
             brightness = kwargs.get(ATTR_BRIGHTNESS, 255)
             if self._brightness != brightness:
                 self._brightness = brightness
-                await self._api.setBrightnessBuffered(brightness, self._segmented)
+                await self._api.setBrightnessBuffered(brightness)
 
         if ATTR_RGB_COLOR in kwargs:
             red, green, blue = kwargs.get(ATTR_RGB_COLOR)
             if self._rgb != (red, green, blue):
                 self._rgb = (red, green, blue)
-                await self._api.setColorBuffered(red, green, blue, self._segmented)
+                await self._api.setColorBuffered(red, green, blue)
         
         await self._api.sendPacketBuffer()
 
