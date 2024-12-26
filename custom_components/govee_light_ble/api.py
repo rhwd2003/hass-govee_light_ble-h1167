@@ -1,7 +1,7 @@
 from enum import IntEnum
 import asyncio
 import bleak_retry_connector
-from bleak import BleakClient
+from bleak import BleakClient, BLEDevice
 from dataclasses import dataclass
 
 from .const import WRITE_CHARACTERISTIC_UUID
@@ -33,10 +33,11 @@ def generateChecksum(frame: bytes):
     return bytes([checksum & 0xFF])
 
 class GoveeAPI:
-    def __init__(self, ble_device, address):
+    def __init__(self, ble_device: BleakClient, address: str, segmented: bool = False):
         self._conn = None
         self._ble_device = ble_device
         self._address = address
+        self._segmented = segmented
         self._frame_buffer = []
 
     async def _preparePacket(self, packet: LedPacket):
@@ -66,11 +67,11 @@ class GoveeAPI:
         )
         await self._preparePacket(packet)
     
-    async def setBrightnessBuffered(self, value: int, segmented: bool = False):
+    async def setBrightnessBuffered(self, value: int):
         if not 0 <= value <= 255:
             raise ValueError(f'Brightness out of range: {value}')
 
-        if segmented:
+        if self._segmented:
             # brightnessPercent
             value = int(value/255.0*100)
         else:
@@ -83,7 +84,7 @@ class GoveeAPI:
         )
         await self._preparePacket(packet)
         
-    async def setColorBuffered(self, red: int, green: int, blue: int, segmented: bool = False):
+    async def setColorBuffered(self, red: int, green: int, blue: int):
         if not 0 <= red <= 255:
             raise ValueError(f'Color out of range: {red}')
         if not 0 <= green <= 255:
@@ -91,7 +92,7 @@ class GoveeAPI:
         if not 0 <= blue <= 255:
             raise ValueError(f'Color out of range: {blue}')
         payload = [LedColorType.SINGLE, red, green, blue]
-        if segmented:
+        if self._segmented:
             payload = [LedColorType.SEGMENTS, 0x01, red, green, blue, 0, 0, 0, 0, 0, 0xff, 0xff]
         packet = LedPacket(
             head=LedPacketHead.COMMAND,
