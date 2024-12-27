@@ -46,3 +46,9 @@ class GoveeUtils:
         #add checksum to end
         frame += await GoveeUtils.generateChecksum(frame)
         return frame
+
+    @staticmethod
+    async def verifyChecksum(frame: bytes):
+        checksum_received = frame[-1].to_bytes(1, 'big')
+        checksum_calculated = generateChecksum(frame[:-1])
+        return checksum_received == checksum_calculated
