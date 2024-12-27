@@ -28,10 +28,10 @@ async def async_setup_entry(
     )
     api = GoveeAPI(ble_device, runtime_data.device_address, runtime_data.device_segmented)
     #request current values from device
-    await api.requestState()
-    await api.requestBrightness()
-    await api.requestColor()
-    await api.disconnect()
+    await api.requestStateBuffered()
+    await api.requestBrightnessBuffered()
+    await api.requestColorBuffered()
+    await api.sendPacketBuffer()
 
     async_add_entities([
         GoveeBluetoothLight(
@@ -77,7 +77,7 @@ class GoveeBluetoothLight(LightEntity):
 
     async def async_turn_on(self, **kwargs):
         """Turn device on."""
-        await self._api.setStateBuffered(state)
+        await self._api.setStateBuffered(True)
 
         if ATTR_BRIGHTNESS in kwargs:
             brightness = kwargs.get(ATTR_BRIGHTNESS, 255)
@@ -88,11 +88,9 @@ class GoveeBluetoothLight(LightEntity):
             await self._api.setColorBuffered(red, green, blue)
         
         await self._api.sendPacketBuffer()
-        await api.disconnect()
 
     
     async def async_turn_off(self, **kwargs):
         """Turn device off."""
-        await self._api.setStateBuffered(state)
+        await self._api.setStateBuffered(False)
         await self._api.sendPacketBuffer()
-        await api.disconnect()
