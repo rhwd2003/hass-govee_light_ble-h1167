@@ -77,7 +77,7 @@ class GoveeBluetoothLight(LightEntity):
 
     async def async_turn_on(self, **kwargs):
         """Turn device on."""
-        await self._api.setStateBuffered(state)
+        await self._api.setStateBuffered(True)
 
         if ATTR_BRIGHTNESS in kwargs:
             brightness = kwargs.get(ATTR_BRIGHTNESS, 255)
@@ -92,5 +92,5 @@ class GoveeBluetoothLight(LightEntity):
     
     async def async_turn_off(self, **kwargs):
         """Turn device off."""
-        await self._api.setStateBuffered(state)
+        await self._api.setStateBuffered(False)
         await self._api.sendPacketBuffer()
