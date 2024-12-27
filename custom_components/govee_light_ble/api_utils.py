@@ -50,5 +50,5 @@ class GoveeUtils:
     @staticmethod
     async def verifyChecksum(frame: bytes):
         checksum_received = frame[-1].to_bytes(1, 'big')
-        checksum_calculated = generateChecksum(frame[:-1])
+        checksum_calculated = await GoveeUtils.generateChecksum(frame[:-1])
         return checksum_received == checksum_calculated

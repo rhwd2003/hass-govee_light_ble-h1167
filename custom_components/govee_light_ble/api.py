@@ -87,7 +87,7 @@ class GoveeAPI:
         #request data or perform a change
         head = LedPacketHead.REQUEST if request else LedPacketHead.COMMAND
         packet = LedPacket(head, cmd, payload)
-        for index in range(repeat):
+        for index in range(1 if request else repeat):
             self._packet_buffer.append(packet)
 
     async def sendPacketBuffer(self):
