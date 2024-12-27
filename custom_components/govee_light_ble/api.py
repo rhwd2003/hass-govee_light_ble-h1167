@@ -29,6 +29,7 @@ class GoveeAPI:
         self._packet_buffer = []
         self._expected_responses = []
         self._client = None
+        self.receiving_in_progress = False
 
     @property
     def address(self):
@@ -41,6 +42,7 @@ class GoveeAPI:
     async def _ensureConnected(self):
         """ connects to a bluetooth device """
         if self._client ==  None or not self._client.is_connected:
+            self.receiving_in_progress = False
             self._client = await bleak_retry_connector.establish_connection(BleakClient, self._ble_device, self.address)
 
     async def _transmitPacket(self, packet: LedPacket):
@@ -105,11 +107,13 @@ class GoveeAPI:
     
     async def _startReceiving(self):
         """ start receiving packets """
+        self.receiving_in_progress = True
         self.stop_event = asyncio.Event()
         await self._client.start_notify(READ_CHARACTERISTIC_UUID, self._handleReceive)
 
     async def _stopReceiving(self):
         """ stop receiving packets """
+        self.receiving_in_progress = False
         await self._client.stop_notify(READ_CHARACTERISTIC_UUID)
 
     async def sendPacketBuffer(self):
