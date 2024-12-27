@@ -52,7 +52,7 @@ class GoveeCoordinator(DataUpdateCoordinator):
             update_method=self._async_update_data,
             # Do not set a polling interval as data will be pushed.
             # You can remove this line but left here for explanatory purposes.
-            update_interval=timedelta(seconds=10)
+            update_interval=timedelta(seconds=15)
         )
 
     async def _async_update_data(self):
@@ -61,6 +61,10 @@ class GoveeCoordinator(DataUpdateCoordinator):
         This is the place to pre-process the data to lookup tables
         so entities can quickly look up their data.
         """
+        if self._api.receiving_in_progress:
+            #dont connect if update handler is still receiving
+            _LOGGER.warn("still connected, aborting data update")
+            return self.data
         await self._api.requestStateBuffered()
         await self._api.requestBrightnessBuffered()
         await self._api.requestColorBuffered()
