@@ -24,9 +24,9 @@ async def async_setup_entry(
     ble_device = bluetooth.async_ble_device_from_address(
         hass,
         runtime_data.device_address,
-        connectable=False
+        connectable=True
     )
-    api = GoveeAPI(ble_device, runtime_data.device_address, runtime_data.device_segmented)
+    api = GoveeAPI(ble_device, runtime_data.device_segmented)
     #request current values from device
     await api.requestStateBuffered()
     await api.requestBrightnessBuffered()
@@ -35,9 +35,8 @@ async def async_setup_entry(
 
     async_add_entities([
         GoveeBluetoothLight(
-            device_address=runtime_data.device_address,
-            device_name=runtime_data.device_name,
-            api=api
+            api=api,
+            device_name=runtime_data.device_name
         )
     ], True)
 
@@ -47,16 +46,16 @@ class GoveeBluetoothLight(LightEntity):
     _attr_supported_color_modes = {ColorMode.RGB}
     _attr_color_mode = ColorMode.RGB
 
-    def __init__(self, device_address: str, device_name: str, api: GoveeAPI):
+    def __init__(self, api: GoveeAPI, device_name: str = "Govee LED"):
         """Initialize."""
         self._attr_name = device_name
-        self._attr_unique_id = f"{device_address}"
+        self._attr_unique_id = f"{api.address}"
         self._attr_device_info = DeviceInfo(
             #only generate device once!
             manufacturer="GOVEE",
             model=device_name,
-            serial_number=device_address,
-            identifiers={(DOMAIN, device_address)}
+            serial_number=api.address,
+            identifiers={(DOMAIN, api.address)}
         )
         self._api = api
 
