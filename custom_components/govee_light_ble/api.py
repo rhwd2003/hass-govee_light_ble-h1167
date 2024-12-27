@@ -40,14 +40,8 @@ class GoveeAPI:
 
     async def _ensureConnected(self):
         """ connects to a bluetooth device """
-        if self._client ==  None:
+        if self._client ==  None or not self._client.is_connected:
             self._client = await bleak_retry_connector.establish_connection(BleakClient, self._ble_device, self.address)
-
-    async def _disconnect(self):
-        """ disconnects from a bluetooth device """
-        if self._client !=  None:
-            await self._client.disconnect()
-            self._client = None
 
     async def _transmitPacket(self, packet: LedPacket):
         """ transmit the actiual packet """
@@ -135,7 +129,7 @@ class GoveeAPI:
             #wait to receive all exptected packets
             await self.stop_event.wait()
             await self._stopReceiving()
-        await self._disconnect()
+        #not disconnecting seems to improve connection speed
 
     async def requestStateBuffered(self):
         """ adds a request for the current power state to the transmit buffer """
