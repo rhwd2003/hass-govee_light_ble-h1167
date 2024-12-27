@@ -43,12 +43,12 @@ class GoveeAPI:
 
     async def _transmitPacket(self, packet: LedPacket):
         #convert to bytes
-        frame = GoveeUtils.generateFrame(packet)
+        frame = await GoveeUtils.generateFrame(packet)
         #transmit to UUID
         await self._client.write_gatt_char(WRITE_CHARACTERISTIC_UUID, frame, False)
 
-    def _notificationHandler(self, characteristic: BleakGATTCharacteristic, frame: bytearray):
-        if not GoveeUtils.verifyChecksum(frame):
+    async def _notificationHandler(self, characteristic: BleakGATTCharacteristic, frame: bytearray):
+        if not await GoveeUtils.verifyChecksum(frame):
             raise Exception("transmission error, received packet with bad checksum")
 
         packet = LedPacket(
