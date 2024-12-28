@@ -41,9 +41,11 @@ class GoveeAPI:
 
     async def _ensureConnected(self):
         """ connects to a bluetooth device """
-        if self._client ==  None or not self._client.is_connected:
-            self.receiving_in_progress = False
-            self._client = await bleak_retry_connector.establish_connection(BleakClient, self._ble_device, self.address)
+        if self._client != None and self._client.is_connected:
+            return None
+        if self.receiving_in_progress:
+            self._stopReceiving()
+        self._client = await bleak_retry_connector.establish_connection(BleakClient, self._ble_device, self.address)
 
     async def _transmitPacket(self, packet: LedPacket):
         """ transmit the actiual packet """
