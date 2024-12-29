@@ -44,7 +44,7 @@ class GoveeAPI:
         if self._client != None and self._client.is_connected:
             return None
         if self.receiving_in_progress:
-            self._stopReceiving()
+            await self._stopReceiving()
         self._client = await bleak_retry_connector.establish_connection(BleakClient, self._ble_device, self.address)
 
     async def _transmitPacket(self, packet: LedPacket):
@@ -116,6 +116,7 @@ class GoveeAPI:
     async def _stopReceiving(self):
         """ stop receiving packets """
         self.receiving_in_progress = False
+        self.stop_event.set()
         await self._client.stop_notify(READ_CHARACTERISTIC_UUID)
 
     async def sendPacketBuffer(self):
@@ -126,15 +127,17 @@ class GoveeAPI:
         await self._ensureConnected()
         if self._responseExpected:
             await self._startReceiving()
-        
-        for packet in self._packet_buffer:
-            await self._transmitPacket(packet)
-        await self._clearPacketBuffer()
-
-        if self._responseExpected:
-            #wait to receive all exptected packets
-            await self.stop_event.wait()
-            await self._stopReceiving()
+        try:
+            for packet in self._packet_buffer:
+                await self._transmitPacket(packet)
+            await self._clearPacketBuffer()
+            if self._responseExpected:
+                #wait to receive all exptected packets
+                await self.stop_event.wait()
+        #ensure receiving ist stopped
+        finally:
+            if self._responseExpected:
+                await self._stopReceiving()
         #not disconnecting seems to improve connection speed
 
     async def requestStateBuffered(self):
