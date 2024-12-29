@@ -43,7 +43,7 @@ class GoveeAPI:
         """ connects to a bluetooth device """
         if self._client != None and self._client.is_connected:
             return None
-        if self.receiving_in_progress and :
+        if self.receiving_in_progress:
             await self._stopReceiving()
         self._client = await bleak_retry_connector.establish_connection(BleakClient, self._ble_device, self.address)
 
@@ -117,7 +117,7 @@ class GoveeAPI:
         """ stop receiving packets """
         self.receiving_in_progress = False
         self.stop_event.set()
-        if self._client.is_connected
+        if self._client.is_connected:
             await self._client.stop_notify(READ_CHARACTERISTIC_UUID)
 
     async def sendPacketBuffer(self):
