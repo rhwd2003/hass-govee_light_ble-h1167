@@ -88,7 +88,7 @@ class GoveeAPI:
             if packet.cmd in self._expected_responses:
                 self._expected_responses.remove(packet.cmd)
         #check if all packets are received
-        if len(self._expected_responses) == 0:
+        if not self._expected_responses):
             self.stop_event.set()
 
     async def _preparePacket(self, cmd: LedPacketCmd, payload: bytes | list = b'', request: bool = False, repeat: int = 3):
@@ -117,7 +117,7 @@ class GoveeAPI:
         #not disconnecting seems to improve connection speed
 
     async def waitForResponses(self, responseTimeout: int = 10):
-        if len(self._expected_responses) == 0:
+        if not self._expected_responses:
             #nothing to wait for
             return None
         async with asyncio.timeout(responseTimeout):
