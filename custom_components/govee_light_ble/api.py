@@ -117,7 +117,8 @@ class GoveeAPI:
         """ stop receiving packets """
         self.receiving_in_progress = False
         self.stop_event.set()
-        await self._client.stop_notify(READ_CHARACTERISTIC_UUID)
+        if self._client.is_connected:
+            await self._client.stop_notify(READ_CHARACTERISTIC_UUID)
 
     async def sendPacketBuffer(self):
         """ transmits all buffered data """
