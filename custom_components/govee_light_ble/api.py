@@ -116,7 +116,7 @@ class GoveeAPI:
         await self._clearPacketBuffer()
         #not disconnecting seems to improve connection speed
 
-    async def waitForResponses(self, responseTimeout: int = 10)
+    async def waitForResponses(self, responseTimeout: int = 10):
         if len(self._expected_responses) == 0:
             #nothing to wait for
             return None
