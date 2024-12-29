@@ -30,6 +30,7 @@ class GoveeAPI:
         self._expected_responses = []
         self._client = None
         self.receiving_in_progress = False
+        self.stop_event = asyncio.Event()
 
     @property
     def address(self):
@@ -43,9 +44,11 @@ class GoveeAPI:
         """ connects to a bluetooth device """
         if self._client != None and self._client.is_connected:
             return None
-        if self.receiving_in_progress:
-            await self._stopReceiving()
+        await self._connect()
+    
+    async def _connect(self):
         self._client = await bleak_retry_connector.establish_connection(BleakClient, self._ble_device, self.address)
+        await self._client.start_notify(READ_CHARACTERISTIC_UUID, self._handleReceive)
 
     async def _transmitPacket(self, packet: LedPacket):
         """ transmit the actiual packet """
@@ -106,21 +109,8 @@ class GoveeAPI:
     async def _clearPacketBuffer(self):
         """ clears the packet buffer """
         self._packet_buffer = []
-    
-    async def _startReceiving(self):
-        """ start receiving packets """
-        self.receiving_in_progress = True
-        self.stop_event = asyncio.Event()
-        await self._client.start_notify(READ_CHARACTERISTIC_UUID, self._handleReceive)
 
-    async def _stopReceiving(self):
-        """ stop receiving packets """
-        self.receiving_in_progress = False
-        self.stop_event.set()
-        if self._client.is_connected:
-            await self._client.stop_notify(READ_CHARACTERISTIC_UUID)
-
-    async def sendPacketBuffer(self):
+    async def sendPacketBuffer(self, responseTimeout: int = 10):
         """ transmits all buffered data """
         if not self._packet_buffer:
             #buffer is empty
@@ -128,21 +118,21 @@ class GoveeAPI:
         await self._ensureConnected()
         responseExpected = self._responseExpected
         if responseExpected:
-            await self._startReceiving()
+            self.receiving_in_progress = True
         try:
             for packet in self._packet_buffer:
                 await self._transmitPacket(packet)
             await self._clearPacketBuffer()
             if responseExpected:
                 #wait to receive all exptected packets
-                async with asyncio.timeout(10):
+                async with asyncio.timeout(responseTimeout):
                     await self.stop_event.wait()
         except err:
             raise err
         #ensure receiving ist stopped
         finally:
             if responseExpected:
-                await self._stopReceiving()
+                self.receiving_in_progress = False
         #not disconnecting seems to improve connection speed
 
     async def requestStateBuffered(self):
