@@ -29,16 +29,11 @@ class GoveeAPI:
         self._packet_buffer = []
         self._expected_responses = []
         self._client = None
-        self.receiving_in_progress = False
         self.stop_event = asyncio.Event()
 
     @property
     def address(self):
         return self._ble_device.address
-
-    @property
-    def _responseExpected(self):
-        return len(self._expected_responses) > 0
 
     async def _ensureConnected(self):
         """ connects to a bluetooth device """
@@ -110,30 +105,23 @@ class GoveeAPI:
         """ clears the packet buffer """
         self._packet_buffer = []
 
-    async def sendPacketBuffer(self, responseTimeout: int = 10):
+    async def sendPacketBuffer(self):
         """ transmits all buffered data """
         if not self._packet_buffer:
-            #buffer is empty
+            #nothing to do
             return None
         await self._ensureConnected()
-        responseExpected = self._responseExpected
-        if responseExpected:
-            self.receiving_in_progress = True
-        try:
-            for packet in self._packet_buffer:
-                await self._transmitPacket(packet)
-            await self._clearPacketBuffer()
-            if responseExpected:
-                #wait to receive all exptected packets
-                async with asyncio.timeout(responseTimeout):
-                    await self.stop_event.wait()
-        except err:
-            raise err
-        #ensure receiving ist stopped
-        finally:
-            if responseExpected:
-                self.receiving_in_progress = False
+        for packet in self._packet_buffer:
+            await self._transmitPacket(packet)
+        await self._clearPacketBuffer()
         #not disconnecting seems to improve connection speed
+
+    async def waitForResponses(self, responseTimeout: int = 10)
+        if len(self._expected_responses) == 0:
+            #nothing to wait for
+            return None
+        async with asyncio.timeout(responseTimeout):
+            await self.stop_event.wait()
 
     async def requestStateBuffered(self):
         """ adds a request for the current power state to the transmit buffer """
