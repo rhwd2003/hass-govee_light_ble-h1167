@@ -100,7 +100,7 @@ class GoveeAPI:
         #request data or perform a change
         head = LedPacketHead.REQUEST if request else LedPacketHead.COMMAND
         packet = LedPacket(head, cmd, payload)
-        for index in range(1 if request else repeat):
+        for index in range(repeat):
             self._packet_buffer.append(packet)
 
     async def _clearPacketBuffer(self):
@@ -126,18 +126,22 @@ class GoveeAPI:
             #buffer is empty
             return None
         await self._ensureConnected()
-        if self._responseExpected:
+        responseExpected = self._responseExpected
+        if responseExpected:
             await self._startReceiving()
         try:
             for packet in self._packet_buffer:
                 await self._transmitPacket(packet)
             await self._clearPacketBuffer()
-            if self._responseExpected:
+            if responseExpected:
                 #wait to receive all exptected packets
-                await self.stop_event.wait()
+                async with asyncio.timeout(10):
+                    await self.stop_event.wait()
+        except err:
+            raise err
         #ensure receiving ist stopped
         finally:
-            if self._responseExpected:
+            if responseExpected:
                 await self._stopReceiving()
         #not disconnecting seems to improve connection speed
 
