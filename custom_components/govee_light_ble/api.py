@@ -154,8 +154,8 @@ class GoveeAPI:
             #0x01 means first segment
             await self._preparePacket(LedPacketCmd.SEGMENT, b'\x01', request=True)
         else:
-            #empty response on segmented devices
-            packet = await self._preparePacket(LedPacketCmd.COLOR, request=True)
+            #legacy devices
+            await self._preparePacket(LedPacketCmd.COLOR, request=True)
     
     async def setStateBuffered(self, state: bool):
         """ adds the state to the transmit buffer """
