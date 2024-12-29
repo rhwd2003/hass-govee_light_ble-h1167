@@ -61,14 +61,11 @@ class GoveeCoordinator(DataUpdateCoordinator):
         This is the place to pre-process the data to lookup tables
         so entities can quickly look up their data.
         """
-        if self._api.receiving_in_progress:
-            #dont connect if update handler is still receiving
-            _LOGGER.warn("still connected, aborting data update")
-            return self.data
         await self._api.requestStateBuffered()
         await self._api.requestBrightnessBuffered()
         await self._api.requestColorBuffered()
         await self._api.sendPacketBuffer()
+        await self._api.waitForResponses()
         return GoveeApiData(
             state=self._api.state,
             brightness=self._api.brightness,
