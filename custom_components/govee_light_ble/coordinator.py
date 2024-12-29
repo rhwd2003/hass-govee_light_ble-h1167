@@ -69,6 +69,7 @@ class GoveeCoordinator(DataUpdateCoordinator):
         await self._api.requestBrightnessBuffered()
         await self._api.requestColorBuffered()
         await self._api.sendPacketBuffer()
+        await self._api.waitForResponses()
         return GoveeApiData(
             state=self._api.state,
             brightness=self._api.brightness,
