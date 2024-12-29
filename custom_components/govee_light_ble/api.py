@@ -88,7 +88,7 @@ class GoveeAPI:
             if packet.cmd in self._expected_responses:
                 self._expected_responses.remove(packet.cmd)
         #check if all packets are received
-        if not self._expected_responses):
+        if not self._expected_responses:
             self.stop_event.set()
 
     async def _preparePacket(self, cmd: LedPacketCmd, payload: bytes | list = b'', request: bool = False, repeat: int = 3):
