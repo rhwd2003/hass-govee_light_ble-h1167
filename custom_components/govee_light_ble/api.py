@@ -22,14 +22,13 @@ class GoveeAPI:
     brightness: int | None = None
     color: tuple[int, ...] | None = None
 
-    def __init__(self, ble_device: BLEDevice, segmented: bool = False):
+    def __init__(self, ble_device: BLEDevice, update_callback, segmented: bool = False):
         self._conn = None
         self._ble_device = ble_device
         self._segmented = segmented
         self._packet_buffer = []
-        self._expected_responses = []
         self._client = None
-        self.stop_event = asyncio.Event()
+        self._update_callback = update_callback
 
     @property
     def address(self):
@@ -84,17 +83,10 @@ class GoveeAPI:
         #only requests are expected to send a response
         if packet.head == LedPacketHead.REQUEST:
             await self._handleRequest(packet)
-            #remove from excpeted commands list if in it
-            if packet.cmd in self._expected_responses:
-                self._expected_responses.remove(packet.cmd)
-        #check if all packets are received
-        if not self._expected_responses:
-            self.stop_event.set()
+            await self._update_callback()
 
     async def _preparePacket(self, cmd: LedPacketCmd, payload: bytes | list = b'', request: bool = False, repeat: int = 3):
         """ add data to transmission buffer """
-        if request and cmd not in self._expected_responses:
-            self._expected_responses.append(cmd)
         #request data or perform a change
         head = LedPacketHead.REQUEST if request else LedPacketHead.COMMAND
         packet = LedPacket(head, cmd, payload)
@@ -115,13 +107,6 @@ class GoveeAPI:
             await self._transmitPacket(packet)
         await self._clearPacketBuffer()
         #not disconnecting seems to improve connection speed
-
-    async def waitForResponses(self, responseTimeout: int = 10):
-        if not self._expected_responses:
-            #nothing to wait for
-            return None
-        async with asyncio.timeout(responseTimeout):
-            await self.stop_event.wait()
 
     async def requestStateBuffered(self):
         """ adds a request for the current power state to the transmit buffer """
@@ -146,7 +131,7 @@ class GoveeAPI:
             return None #nothing to do
         #0x1 = ON, Ox0 = OFF
         await self._preparePacket(LedPacketCmd.POWER, [0x1 if state else 0x0])
-        self.state = state
+        await self.requestStateBuffered()
     
     async def setBrightnessBuffered(self, brightness: int):
         """ adds the brightness to the transmit buffer """
@@ -158,7 +143,7 @@ class GoveeAPI:
             #segmented devices 0-100
             payload = int(brightness / 255 * 100)
         await self._preparePacket(LedPacketCmd.BRIGHTNESS, [payload])
-        self.brightness = brightness
+        await self.requestBrightnessBuffered()
         
     async def setColorBuffered(self, red: int, green: int, blue: int):
         """ adds the color to the transmit buffer """
@@ -169,4 +154,4 @@ class GoveeAPI:
         if self._segmented:
             payload = [LedColorType.SEGMENTS, 0x01, red, green, blue, 0, 0, 0, 0, 0, 0xff, 0xff]
         await self._preparePacket(LedPacketCmd.COLOR, payload)
-        self.color = (red, green, blue)
+        await self.requestColorBuffered()
