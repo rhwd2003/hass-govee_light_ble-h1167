@@ -41,7 +41,7 @@ class GoveeCoordinator(DataUpdateCoordinator):
             connectable=False
         )
         assert ble_device
-        self._api = GoveeAPI(ble_device, self.device_segmented)
+        self._api = GoveeAPI(ble_device, self._async_push_data, self.device_segmented)
 
         # Initialise DataUpdateCoordinator
         super().__init__(
@@ -55,6 +55,16 @@ class GoveeCoordinator(DataUpdateCoordinator):
             update_interval=timedelta(seconds=15)
         )
 
+    def _get_data(self):
+        return GoveeApiData(
+            state=self._api.state,
+            brightness=self._api.brightness,
+            color=self._api.color
+        )
+
+    async def _async_push_data(self):
+        self.async_set_updated_data(self._get_data())
+
     async def _async_update_data(self):
         """Fetch data from API endpoint.
 
@@ -65,12 +75,7 @@ class GoveeCoordinator(DataUpdateCoordinator):
         await self._api.requestBrightnessBuffered()
         await self._api.requestColorBuffered()
         await self._api.sendPacketBuffer()
-        await self._api.waitForResponses()
-        return GoveeApiData(
-            state=self._api.state,
-            brightness=self._api.brightness,
-            color=self._api.color
-        )
+        return self._get_data()
 
     async def setStateBuffered(self, state: bool):
         await self._api.setStateBuffered(state)
@@ -83,9 +88,3 @@ class GoveeCoordinator(DataUpdateCoordinator):
 
     async def sendPacketBuffer(self):
         await self._api.sendPacketBuffer()
-        updatedData  = GoveeApiData(
-            state=self._api.state,
-            brightness=self._api.brightness,
-            color=self._api.color
-        )
-        self.async_set_updated_data(updatedData)
