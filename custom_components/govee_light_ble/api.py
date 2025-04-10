@@ -13,6 +13,7 @@ from .api_utils import (
     LedPacket,
     GoveeUtils
 )
+import math
 
 import logging
 _LOGGER = logging.getLogger(__name__)
@@ -138,7 +139,7 @@ class GoveeAPI:
         if self.brightness == brightness:
             return None #nothing to do
         #legacy devices 0-255
-        payload = round(brightness)
+        payload = math.ceil(brightness)
         if self._segmented:
             #segmented devices 0-100
             payload = int(brightness / 255 * 100)
