@@ -14,6 +14,7 @@ class LedPacketCmd(IntEnum):
 class LedColorType(IntEnum):
     SEGMENTS    = 0x15
     SINGLE      = 0x02
+    LEGACY      = 0x0D
 
 @dataclass
 class LedPacket:

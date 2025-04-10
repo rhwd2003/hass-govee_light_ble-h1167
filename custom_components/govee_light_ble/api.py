@@ -149,9 +149,10 @@ class GoveeAPI:
         """ adds the color to the transmit buffer """
         if self.color == (red, green, blue):
             return None #nothing to do
-        #legacy devices
-        payload = [LedColorType.SINGLE, red, green, blue]
         if self._segmented:
-            payload = [LedColorType.SEGMENTS, 0x01, red, green, blue, 0, 0, 0, 0, 0, 0xff, 0xff]
-        await self._preparePacket(LedPacketCmd.COLOR, payload)
+            await self._preparePacket(LedPacketCmd.COLOR, [LedColorType.SEGMENTS, 0x01, red, green, blue, 0, 0, 0, 0, 0, 0xff, 0xff])
+        else:
+            #legacy devices
+            await self._preparePacket(LedPacketCmd.COLOR, [LedColorType.SINGLE, red, green, blue])
+            await self._preparePacket(LedPacketCmd.COLOR, [LedColorType.LEGACY, red, green, blue])
         await self.requestColorBuffered()
