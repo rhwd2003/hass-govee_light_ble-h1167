@@ -141,7 +141,7 @@ class GoveeAPI:
         payload = round(brightness)
         if self._segmented:
             #segmented devices 0-100
-            payload = int(brightness / 255 * 100)
+            payload = round(brightness / 255 * 100)
         await self._preparePacket(LedPacketCmd.BRIGHTNESS, [payload])
         await self.requestBrightnessBuffered()
         
