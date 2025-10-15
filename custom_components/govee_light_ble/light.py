@@ -4,13 +4,14 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.components.light import (ColorMode, LightEntity, ATTR_BRIGHTNESS, ATTR_RGB_COLOR)
+from homeassistant.components.light import (ColorMode, LightEntity, ATTR_BRIGHTNESS, ATTR_RGB_COLOR, ATTR_EFFECT)
 from homeassistant.const import CONF_ADDRESS, CONF_NAME
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api import GoveeAPI
 from .const import DOMAIN
 from .coordinator import GoveeCoordinator
+from .api_utils import EFFECT_MAP
 
 import logging
 _LOGGER = logging.getLogger(__name__)
@@ -44,6 +45,13 @@ class GoveeBluetoothLight(CoordinatorEntity, LightEntity):
         super().__init__(coordinator)
         self._attr_name = coordinator.device_name
         self._attr_unique_id = f"{coordinator.device_address}"
+        
+        # Set effect list based on device capabilities
+        if coordinator.music_mode_support:
+            self._attr_effect_list = list(EFFECT_MAP.keys())
+        else:
+            self._attr_effect_list = None
+            
         self._attr_device_info = DeviceInfo(
             #only generate device once!
             manufacturer="GOVEE",
@@ -70,6 +78,11 @@ class GoveeBluetoothLight(CoordinatorEntity, LightEntity):
     def rgb_color(self) -> bool | None:
         """Return the current rgw color."""
         return self.coordinator.data.color
+    
+    @property
+    def effect(self) -> str | None:
+        """Return the current effect."""
+        return self.coordinator.data.current_effect
 
     async def async_turn_on(self, **kwargs):
         """Turn device on."""
@@ -83,6 +96,13 @@ class GoveeBluetoothLight(CoordinatorEntity, LightEntity):
         if ATTR_RGB_COLOR in kwargs:
             red, green, blue = kwargs.get(ATTR_RGB_COLOR)
             await self.coordinator.setColorBuffered(red, green, blue)
+
+        if ATTR_EFFECT in kwargs and self.coordinator.music_mode_support:
+            effect = kwargs.get(ATTR_EFFECT)
+            if effect in EFFECT_MAP:
+                await self.coordinator.setEffectBuffered(effect)
+            else:
+                _LOGGER.warning(f"Unknown effect: {effect}")
         
         await self.coordinator.sendPacketBuffer()
 

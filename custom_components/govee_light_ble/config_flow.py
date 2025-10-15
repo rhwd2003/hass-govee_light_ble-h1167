@@ -76,13 +76,22 @@ class GoveeConfigFlow(ConfigFlow, domain=DOMAIN):
         self._abort_if_unique_id_configured()
 
         if user_input is not None:
+            # Detect if this is an H1167 device
+            is_h1167 = "H1167" in discovery_info.name or "h1167" in discovery_info.name.lower()
+            
             return self.async_create_entry(title=discovery_info.name, data={
                 CONF_ADDRESS: discovery_info.address.upper(),
                 CONF_NAME: discovery_info.name,
-                "segmented": user_input["segmented"]
+                "segmented": user_input["segmented"],
+                "is_h1167": is_h1167,
+                "music_mode_support": user_input.get("music_mode_support", is_h1167)
             })
 
+        # Detect if this might be an H1167 device for default settings
+        is_h1167 = "H1167" in discovery_info.name or "h1167" in discovery_info.name.lower()
+        
         return self.async_show_form(
             step_id="bluetooth_confirm", data_schema=vol.Schema({
-                vol.Required("segmented", default=True): bool
+                vol.Required("segmented", default=True): bool,
+                vol.Required("music_mode_support", default=is_h1167): bool
             }))

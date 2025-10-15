@@ -20,6 +20,8 @@ class GoveeApiData:
     state: bool | None = None
     brightness: int | None = None
     color: tuple[int, ...] | None = None
+    current_effect: str | None = None
+    music_mode_enabled: bool = False
 
 class GoveeCoordinator(DataUpdateCoordinator):
     """My coordinator."""
@@ -33,6 +35,8 @@ class GoveeCoordinator(DataUpdateCoordinator):
         self.device_name = config_entry.data[CONF_NAME]
         self.device_address = config_entry.data[CONF_ADDRESS]
         self.device_segmented = config_entry.data["segmented"]
+        self.is_h1167 = config_entry.data.get("is_h1167", False)
+        self.music_mode_support = config_entry.data.get("music_mode_support", False)
 
         #get connection to bluetooth device
         ble_device = bluetooth.async_ble_device_from_address(
@@ -59,7 +63,9 @@ class GoveeCoordinator(DataUpdateCoordinator):
         return GoveeApiData(
             state=self._api.state,
             brightness=self._api.brightness,
-            color=self._api.color
+            color=self._api.color,
+            current_effect=self._api.current_effect,
+            music_mode_enabled=self._api.music_mode_enabled
         )
 
     async def _async_push_data(self):
@@ -74,6 +80,11 @@ class GoveeCoordinator(DataUpdateCoordinator):
         await self._api.requestStateBuffered()
         await self._api.requestBrightnessBuffered()
         await self._api.requestColorBuffered()
+        
+        # Only request music mode for devices that support it
+        if self.music_mode_support:
+            await self._api.requestMusicModeBuffered()
+            
         await self._api.sendPacketBuffer()
         return self._get_data()
 
@@ -88,3 +99,9 @@ class GoveeCoordinator(DataUpdateCoordinator):
 
     async def sendPacketBuffer(self):
         await self._api.sendPacketBuffer()
+    
+    async def setEffectBuffered(self, effect_name: str):
+        await self._api.setEffectBuffered(effect_name)
+    
+    async def setMusicModeBuffered(self, enabled: bool):
+        await self._api.setMusicModeBuffered(enabled)
