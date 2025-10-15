@@ -1,4 +1,5 @@
 import asyncio
+import time
 import bleak_retry_connector
 from bleak.backends.characteristic import BleakGATTCharacteristic
 from bleak import (
@@ -11,7 +12,9 @@ from .const import (
     READ_CHARACTERISTIC_UUID,
     MAX_CONNECTION_ATTEMPTS,
     CONNECTION_TIMEOUT,
-    RETRY_DELAY
+    RETRY_DELAY,
+    INITIAL_CONNECTION_TIMEOUT,
+    RECONNECTION_TIMEOUT
 )
 from .api_utils import (
     LedPacketHead,
@@ -42,73 +45,115 @@ class GoveeAPI:
         self._packet_buffer = []
         self._client = None
         self._update_callback = update_callback
+        self._connection_lock = asyncio.Lock()
+        self._last_connection_attempt = 0
+        self._connection_failures = 0
 
     @property
     def address(self):
         return self._ble_device.address
 
     async def _ensureConnected(self):
-        """ connects to a bluetooth device """
-        if self._client != None and self._client.is_connected:
-            return None
-        await self._connect()
+        """Ensures a connection to the bluetooth device with proper locking."""
+        async with self._connection_lock:
+            if self._client and self._client.is_connected:
+                return
+            await self._connect()
     
     async def _connect(self):
         """Connect to the BLE device with improved error handling and retry logic."""
+        current_time = time.time()
+        
+        # Implement exponential backoff for repeated failures
+        if self._connection_failures > 0:
+            backoff_delay = min(2 ** self._connection_failures, 30)  # Max 30 seconds
+            if current_time - self._last_connection_attempt < backoff_delay:
+                _LOGGER.debug(f"Skipping connection attempt for {self.address} due to backoff (failures: {self._connection_failures})")
+                raise Exception(f"Connection backoff active for {self.address}")
+        
+        self._last_connection_attempt = current_time
         last_exception = None
+        
+        # Clean up any existing connection first
+        await self._cleanup_connection()
         
         for attempt in range(MAX_CONNECTION_ATTEMPTS):
             try:
-                _LOGGER.debug(f"Connection attempt {attempt + 1}/{MAX_CONNECTION_ATTEMPTS} for {self.address}")
+                _LOGGER.info(f"Connection attempt {attempt + 1}/{MAX_CONNECTION_ATTEMPTS} for {self.address}")
                 
-                # Use shorter timeout for individual connection attempts
-                self._client = await asyncio.wait_for(
-                    bleak_retry_connector.establish_connection(
-                        BleakClient, 
-                        self._ble_device, 
-                        self.address,
-                        max_attempts=1  # Let our outer loop handle retries
-                    ),
-                    timeout=CONNECTION_TIMEOUT
+                # Determine timeout based on whether this is initial connection or reconnection
+                timeout = INITIAL_CONNECTION_TIMEOUT if self._connection_failures == 0 else RECONNECTION_TIMEOUT
+                
+                # Create a fresh BleakClient for each attempt
+                self._client = BleakClient(self._ble_device)
+                
+                # Connect with timeout
+                await asyncio.wait_for(
+                    self._client.connect(),
+                    timeout=timeout
                 )
+                
+                if not self._client.is_connected:
+                    raise Exception("Connection established but client reports not connected")
                 
                 # Start notifications
                 await self._client.start_notify(READ_CHARACTERISTIC_UUID, self._handleReceive)
-                _LOGGER.info(f"Successfully connected to {self.address}")
+                
+                # Reset failure counter on successful connection
+                self._connection_failures = 0
+                _LOGGER.info(f"Successfully connected to {self.address} on attempt {attempt + 1}")
                 return
                 
             except BleakOutOfConnectionSlotsError as e:
                 last_exception = e
                 _LOGGER.warning(f"Connection slot error for {self.address}, attempt {attempt + 1}: {e}")
+                await self._cleanup_connection()
                 if attempt < MAX_CONNECTION_ATTEMPTS - 1:
                     await asyncio.sleep(RETRY_DELAY * (attempt + 1))  # Exponential backoff
                     
             except asyncio.TimeoutError as e:
                 last_exception = e
-                _LOGGER.warning(f"Connection timeout for {self.address}, attempt {attempt + 1}")
+                _LOGGER.warning(f"Connection timeout for {self.address}, attempt {attempt + 1} (timeout: {timeout}s)")
+                await self._cleanup_connection()
                 if attempt < MAX_CONNECTION_ATTEMPTS - 1:
                     await asyncio.sleep(RETRY_DELAY)
                     
             except Exception as e:
                 last_exception = e
-                _LOGGER.warning(f"Connection error for {self.address}, attempt {attempt + 1}: {e}")
+                _LOGGER.warning(f"Connection error for {self.address}, attempt {attempt + 1}: {type(e).__name__}: {e}")
+                await self._cleanup_connection()
                 if attempt < MAX_CONNECTION_ATTEMPTS - 1:
                     await asyncio.sleep(RETRY_DELAY)
         
-        # If we get here, all attempts failed
-        raise last_exception or Exception(f"Failed to connect to {self.address} after {MAX_CONNECTION_ATTEMPTS} attempts")
+        # All attempts failed, increment failure counter
+        self._connection_failures += 1
+        error_msg = f"Failed to connect to {self.address} after {MAX_CONNECTION_ATTEMPTS} attempts (failure count: {self._connection_failures})"
+        _LOGGER.error(error_msg)
+        raise last_exception or Exception(error_msg)
+    
+    async def _cleanup_connection(self):
+        """Clean up any existing connection state."""
+        if self._client:
+            try:
+                if self._client.is_connected:
+                    await self._client.disconnect()
+            except Exception as e:
+                _LOGGER.debug(f"Error during connection cleanup for {self.address}: {e}")
+            finally:
+                self._client = None
     
     async def _disconnect(self):
         """Properly disconnect from the BLE device."""
-        if self._client and self._client.is_connected:
-            try:
-                await self._client.stop_notify(READ_CHARACTERISTIC_UUID)
-                await self._client.disconnect()
-                _LOGGER.debug(f"Disconnected from {self.address}")
-            except Exception as e:
-                _LOGGER.warning(f"Error disconnecting from {self.address}: {e}")
-            finally:
-                self._client = None
+        async with self._connection_lock:
+            if self._client and self._client.is_connected:
+                try:
+                    await self._client.stop_notify(READ_CHARACTERISTIC_UUID)
+                    await self._client.disconnect()
+                    _LOGGER.debug(f"Disconnected from {self.address}")
+                except Exception as e:
+                    _LOGGER.warning(f"Error disconnecting from {self.address}: {e}")
+                finally:
+                    self._client = None
 
     async def _transmitPacket(self, packet: LedPacket):
         """ transmit the actiual packet """
@@ -185,15 +230,33 @@ class GoveeAPI:
         self._packet_buffer = []
 
     async def sendPacketBuffer(self):
-        """ transmits all buffered data """
+        """Transmits all buffered data with improved error handling."""
         if not self._packet_buffer:
-            #nothing to do
+            # Nothing to do
             return None
-        await self._ensureConnected()
-        for packet in self._packet_buffer:
-            await self._transmitPacket(packet)
-        await self._clearPacketBuffer()
-        #not disconnecting seems to improve connection speed
+            
+        try:
+            await self._ensureConnected()
+            
+            # Send all packets
+            for i, packet in enumerate(self._packet_buffer):
+                try:
+                    await self._transmitPacket(packet)
+                    # Small delay between packets to avoid overwhelming the device
+                    if i < len(self._packet_buffer) - 1:
+                        await asyncio.sleep(0.05)  # 50ms delay
+                except Exception as e:
+                    _LOGGER.warning(f"Failed to transmit packet {i+1}/{len(self._packet_buffer)} to {self.address}: {e}")
+                    # Don't break the loop, try to send remaining packets
+                    
+            await self._clearPacketBuffer()
+            _LOGGER.debug(f"Successfully sent packet buffer to {self.address}")
+            
+        except Exception as e:
+            _LOGGER.error(f"Failed to send packet buffer to {self.address}: {e}")
+            # Clear buffer even on failure to prevent infinite retries
+            await self._clearPacketBuffer()
+            raise
 
     async def requestStateBuffered(self):
         """ adds a request for the current power state to the transmit buffer """
@@ -267,6 +330,24 @@ class GoveeAPI:
         
         await self.requestMusicModeBuffered()
     
+    async def reset_connection_state(self):
+        """Reset connection state and failure counters."""
+        async with self._connection_lock:
+            self._connection_failures = 0
+            self._last_connection_attempt = 0
+            await self._cleanup_connection()
+            _LOGGER.info(f"Reset connection state for {self.address}")
+    
+    @property
+    def connection_failures(self):
+        """Get the current number of connection failures."""
+        return self._connection_failures
+    
+    @property
+    def is_connected(self):
+        """Check if the device is currently connected."""
+        return self._client and self._client.is_connected
+    
     async def setMusicModeBuffered(self, enabled: bool):
         """ enables or disables music mode """
         if self.music_mode_enabled == enabled:
@@ -280,3 +361,21 @@ class GoveeAPI:
             await self._preparePacket(LedPacketCmd.MUSIC_MODE, [MusicModeType.OFF])
         
         await self.requestMusicModeBuffered()
+    
+    async def reset_connection_state(self):
+        """Reset connection state and failure counters."""
+        async with self._connection_lock:
+            self._connection_failures = 0
+            self._last_connection_attempt = 0
+            await self._cleanup_connection()
+            _LOGGER.info(f"Reset connection state for {self.address}")
+    
+    @property
+    def connection_failures(self):
+        """Get the current number of connection failures."""
+        return self._connection_failures
+    
+    @property
+    def is_connected(self):
+        """Check if the device is currently connected."""
+        return self._client and self._client.is_connected
